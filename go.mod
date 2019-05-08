@@ -8,6 +8,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-cmp v0.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
+	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
 	go.opencensus.io v0.21.0
 	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c // indirect
@@ -17,4 +18,5 @@ require (
 	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/appengine v1.5.0
 	google.golang.org/genproto v0.0.0-20190502173448-54afdca5d873
+	gopkg.in/yaml.v2 v2.2.1 // indirect
 )

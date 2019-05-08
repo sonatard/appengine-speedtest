@@ -10,6 +10,8 @@ import (
 	cloudtasks "cloud.google.com/go/cloudtasks/apiv2"
 	clouddatastore "cloud.google.com/go/datastore"
 	"contrib.go.opencensus.io/exporter/stackdriver"
+	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
+	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/trace"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
@@ -61,8 +63,10 @@ func main() {
 
 	trace.RegisterExporter(sd)
 
+	router := http.NewServeMux()
+
 	// datastore
-	http.HandleFunc("/cloud/datastore/put", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/cloud/datastore/put", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		e := &Entity{
@@ -80,10 +84,10 @@ func main() {
 			return
 		}
 
-		fmt.Fprintf(w, "cloud datastore put %v %v\n", e)
+		fmt.Fprintf(w, "cloud datastore put %v\n", e)
 	})
 
-	http.HandleFunc("/cloud/datastore/get", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/cloud/datastore/get", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		k := clouddatastore.NameKey("Entity", "cloudID", nil)
@@ -99,7 +103,7 @@ func main() {
 		fmt.Fprintf(w, "cloud datastore get %v\n", e)
 	})
 
-	http.HandleFunc("/cloud/datastore/txgetput", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/cloud/datastore/txgetput", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		var err error
@@ -127,7 +131,7 @@ func main() {
 		fmt.Fprintf(w, "cloud datastore txgetput \n")
 	})
 
-	http.HandleFunc("/appengine/datastore/put", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/appengine/datastore/put", func(w http.ResponseWriter, r *http.Request) {
 		ctx := appengine.NewContext(r)
 
 		e := &Entity{
@@ -148,7 +152,7 @@ func main() {
 		fmt.Fprintf(w, "appengine datastore put %v\n", e)
 	})
 
-	http.HandleFunc("/appengine/datastore/get", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/appengine/datastore/get", func(w http.ResponseWriter, r *http.Request) {
 		ctx := appengine.NewContext(r)
 
 		k := datastore.NewKey(ctx, "Entity", "appengineID", 0, nil)
@@ -164,7 +168,7 @@ func main() {
 		fmt.Fprintf(w, "appengine datastore get %v\n", e)
 	})
 
-	http.HandleFunc("/appengine/datastore/txgetput", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/appengine/datastore/txgetput", func(w http.ResponseWriter, r *http.Request) {
 		ctx := appengine.NewContext(r)
 
 		var err error
@@ -194,7 +198,7 @@ func main() {
 	})
 
 	// taskqueue
-	http.HandleFunc("/cloud/tasks", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/cloud/tasks", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		if _, err := createTask(ctx, taskClient, "/_/health", projectID, locationID, queueID, "hello"); err != nil {
@@ -205,7 +209,7 @@ func main() {
 		fmt.Fprintf(w, "cloud tasks")
 	})
 
-	http.HandleFunc("/appengine/taskqueue", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/appengine/taskqueue", func(w http.ResponseWriter, r *http.Request) {
 		ctx := appengine.NewContext(r)
 
 		task := &taskqueue.Task{
@@ -223,8 +227,13 @@ func main() {
 		fmt.Fprintf(w, "appengine taskqueue\n")
 	})
 
-	http.HandleFunc("/_/health", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/_/health", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "HealthCheck: OK\n")
+	})
+
+	http.Handle("/", &ochttp.Handler{
+		Propagation: &propagation.HTTPFormat{},
+		Handler:     router,
 	})
 
 	appengine.Main()
